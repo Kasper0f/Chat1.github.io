@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Чат</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --border: #2a2a2a;
+    --accent: #e8ff00;
+    --accent-dim: #b8cc00;
+    --text: #e8e8e8;
+    --text-muted: #666;
+    --msg-mine: #1a1f00;
+    --msg-theirs: #1a1a1a;
+    --danger: #ff4444;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    overflow: hidden;
+  }
+
+  /* ── LOCK SCREEN ── */
+  #lockScreen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 32px;
+    gap: 0;
+  }
+
+  .lock-logo {
+    font-size: 48px;
+    margin-bottom: 32px;
+    animation: pulse 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .lock-title {
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 40px;
+  }
+
+  .lock-input-wrap {
+    width: 100%;
+    max-width: 280px;
+    position: relative;
+    margin-bottom: 16px;
+  }
+
+  .lock-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 16px;
+    padding: 14px 16px;
+    outline: none;
+    letter-spacing: 2px;
+    transition: border-color 0.2s;
+  }
+
+  .lock-input:focus {
+    border-color: var(--accent);
+  }
+
+  .lock-input.error {
+    border-color: var(--danger);
+    animation: shake 0.3s ease;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    75% { transform: translateX(8px); }
+  }
+
+  .lock-btn {
+    width: 100%;
+    max-width: 280px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 14px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  .lock-btn:active { transform: scale(0.97); background: var(--accent-dim); }
+
+  .lock-error {
+    font-size: 11px;
+    color: var(--danger);
+    letter-spacing: 1px;
+    margin-top: 12px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .lock-error.visible { opacity: 1; }
+
+  /* ── NAME SCREEN ── */
+  #nameScreen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 99;
+    padding: 32px;
+    gap: 16px;
+  }
+
+  .name-title {
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .name-input {
+    width: 100%;
+    max-width: 280px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 16px;
+    padding: 14px 16px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .name-input:focus { border-color: var(--accent); }
+
+  /* ── CHAT ── */
+  #chatScreen {
+    display: none;
+    flex-direction: column;
+    height: 100%;
+    height: 100dvh;
+  }
+
+  .chat-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .header-left { display: flex; flex-direction: column; gap: 2px; }
+
+  .header-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: var(--accent);
+  }
+
+  .header-status {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+
+  .header-status .dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #444;
+    margin-right: 4px;
+    transition: background 0.3s;
+  }
+
+  .header-status.online .dot { background: #44ff88; }
+
+  .header-user {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    scroll-behavior: smooth;
+  }
+
+  .messages::-webkit-scrollbar { width: 3px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .msg {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.5;
+    animation: msgIn 0.2s ease;
+    word-break: break-word;
+  }
+
+  @keyframes msgIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg.mine {
+    background: var(--msg-mine);
+    border: 1px solid #3a4400;
+    align-self: flex-end;
+    border-bottom-right-radius: 0;
+  }
+
+  .msg.theirs {
+    background: var(--msg-theirs);
+    border: 1px solid var(--border);
+    align-self: flex-start;
+    border-bottom-left-radius: 0;
+  }
+
+  .msg-name {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .msg.mine .msg-name { color: var(--accent-dim); text-align: right; }
+
+  .msg-time {
+    font-size: 9px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    text-align: right;
+  }
+
+  .system-msg {
+    align-self: center;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+
+  .chat-input-area {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 12px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    flex-shrink: 0;
+  }
+
+  .chat-textarea {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    padding: 10px 12px;
+    resize: none;
+    outline: none;
+    max-height: 120px;
+    min-height: 42px;
+    line-height: 1.5;
+    transition: border-color 0.2s;
+  }
+
+  .chat-textarea:focus { border-color: var(--accent); }
+
+  .send-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: 4px;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  .send-btn:active { transform: scale(0.93); background: var(--accent-dim); }
+
+  .send-btn svg { width: 18px; height: 18px; }
+
+  /* CONFIG NOTICE */
+  #configNotice {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .config-box {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 24px;
+    max-width: 360px;
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--text);
+  }
+
+  .config-box h2 {
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+
+  .config-box code {
+    background: #111;
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 2px;
+    color: var(--accent);
+    font-size: 11px;
+  }
+
+  .config-box .field {
+    margin: 12px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .config-box label {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .config-box input {
+    background: #111;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 8px 10px;
+    outline: none;
+    width: 100%;
+  }
+
+  .config-box input:focus { border-color: var(--accent); }
+
+  .config-save {
+    width: 100%;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 12px;
+    cursor: pointer;
+    margin-top: 16px;
+  }
+</style>
+</head>
+<body>
+
+<!-- CONFIG NOTICE (shown if not configured) -->
+<div id="configNotice">
+  <div class="config-box">
+    <h2>⚙ Настройка Firebase</h2>
+    <p style="color:#888;font-size:11px;margin-bottom:16px;">Введи данные из Firebase Console → настройки проекта → веб-приложение</p>
+    <div class="field">
+      <label>API Key</label>
+      <input id="cfg_apiKey" placeholder="AIzaSy..." autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Project ID</label>
+      <input id="cfg_projectId" placeholder="my-project-123" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Database URL</label>
+      <input id="cfg_dbUrl" placeholder="https://my-project-123-default-rtdb.firebaseio.com" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>App ID</label>
+      <input id="cfg_appId" placeholder="1:123456:web:abc123" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Пароль чата</label>
+      <input id="cfg_password" type="password" placeholder="Придумай надёжный пароль" autocomplete="off">
+    </div>
+    <button class="config-save" onclick="saveConfig()">СОХРАНИТЬ И ЗАПУСТИТЬ</button>
+  </div>
+</div>
+
+<!-- LOCK SCREEN -->
+<div id="lockScreen" style="display:none;">
+  <div class="lock-logo">🔒</div>
+  <div class="lock-title">Введите пароль для входа</div>
+  <div class="lock-input-wrap">
+    <input class="lock-input" id="passwordInput" type="password"
+      placeholder="пароль" autocomplete="off"
+      onkeydown="if(event.key==='Enter') checkPassword()">
+  </div>
+  <button class="lock-btn" onclick="checkPassword()">ВОЙТИ</button>
+  <div class="lock-error" id="lockError">Неверный пароль</div>
+</div>
+
+<!-- NAME SCREEN -->
+<div id="nameScreen">
+  <div class="lock-logo">✏️</div>
+  <div class="name-title">Как тебя зовут?</div>
+  <input class="name-input" id="nameInput" type="text"
+    placeholder="Имя или псевдоним" maxlength="20" autocomplete="off"
+    onkeydown="if(event.key==='Enter') enterChat()">
+  <button class="lock-btn" style="max-width:280px;" onclick="enterChat()">В ЧАТ</button>
+</div>
+
+<!-- CHAT -->
+<div id="chatScreen">
+  <div class="chat-header">
+    <div class="header-left">
+      <div class="header-title">[ ЧАТROOM ]</div>
+      <div class="header-status" id="connStatus">
+        <span class="dot"></span><span id="connText">подключение...</span>
+      </div>
+    </div>
+    <div class="header-user" id="headerUser"></div>
+  </div>
+  <div class="messages" id="messages"></div>
+  <div class="chat-input-area">
+    <textarea class="chat-textarea" id="msgInput"
+      placeholder="Написать сообщение..."
+      rows="1"
+      onkeydown="handleKey(event)"
+      oninput="autoResize(this)"></textarea>
+    <button class="send-btn" onclick="sendMessage()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, push, onValue, serverTimestamp, onDisconnect, set, onChildAdded } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+// ── CONFIG ──
+const STORAGE_KEY = 'chatConfig_v1';
+const SESSION_KEY = 'chatSession_v1';
+
+let db, myName, chatConfig;
+
+function loadConfig() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); }
+  catch { return null; }
+}
+
+window.saveConfig = function() {
+  const cfg = {
+    apiKey: document.getElementById('cfg_apiKey').value.trim(),
+    projectId: document.getElementById('cfg_projectId').value.trim(),
+    databaseURL: document.getElementById('cfg_dbUrl').value.trim(),
+    appId: document.getElementById('cfg_appId').value.trim(),
+    password: document.getElementById('cfg_password').value,
+  };
+  if (!cfg.apiKey || !cfg.projectId || !cfg.databaseURL || !cfg.password) {
+    alert('Заполни все поля кроме App ID');
+    return;
+  }
+  if (!cfg.appId) cfg.appId = 'placeholder';
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+  location.reload();
+};
+
+window.checkPassword = function() {
+  const input = document.getElementById('passwordInput').value;
+  const errorEl = document.getElementById('lockError');
+  const inputEl = document.getElementById('passwordInput');
+
+  // Hash comparison
+  hashStr(input).then(hash => {
+    hashStr(chatConfig.password).then(correctHash => {
+      if (hash === correctHash) {
+        // Check for saved name
+        const saved = sessionStorage.getItem(SESSION_KEY);
+        if (saved) {
+          myName = saved;
+          showChat();
+        } else {
+          document.getElementById('lockScreen').style.display = 'none';
+          document.getElementById('nameScreen').style.display = 'flex';
+          setTimeout(() => document.getElementById('nameInput').focus(), 100);
+        }
+      } else {
+        inputEl.classList.add('error');
+        errorEl.classList.add('visible');
+        inputEl.value = '';
+        setTimeout(() => {
+          inputEl.classList.remove('error');
+          errorEl.classList.remove('visible');
+        }, 2000);
+      }
+    });
+  });
+};
+
+window.enterChat = function() {
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) return;
+  myName = name;
+  sessionStorage.setItem(SESSION_KEY, name);
+  showChat();
+};
+
+async function hashStr(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function showChat() {
+  document.getElementById('nameScreen').style.display = 'none';
+  document.getElementById('lockScreen').style.display = 'none';
+  const cs = document.getElementById('chatScreen');
+  cs.style.display = 'flex';
+  document.getElementById('headerUser').textContent = myName;
+  initFirebaseChat();
+}
+
+function initFirebaseChat() {
+  const app = initializeApp({
+    apiKey: chatConfig.apiKey,
+    projectId: chatConfig.projectId,
+    databaseURL: chatConfig.databaseURL,
+    appId: chatConfig.appId,
+    authDomain: `${chatConfig.projectId}.firebaseapp.com`,
+  });
+  db = getDatabase(app);
+
+  // Presence
+  const presenceRef = ref(db, `presence/${myName.replace(/\s/g,'_')}`);
+  set(presenceRef, { online: true, name: myName });
+  onDisconnect(presenceRef).remove();
+
+  // Track online users
+  onValue(ref(db, 'presence'), snap => {
+    const count = snap.exists() ? Object.keys(snap.val()).length : 0;
+    const statusEl = document.getElementById('connStatus');
+    const textEl = document.getElementById('connText');
+    statusEl.classList.toggle('online', count > 0);
+    textEl.textContent = count === 0 ? 'нет подключений' : count === 1 ? 'онлайн: 1' : `онлайн: ${count}`;
+  });
+
+  // Load messages
+  let firstLoad = true;
+  const msgsRef = ref(db, 'messages');
+  onChildAdded(msgsRef, (snap) => {
+    const msg = snap.val();
+    renderMessage(msg, firstLoad);
+  });
+
+  // After initial batch loaded
+  setTimeout(() => {
+    firstLoad = false;
+    scrollToBottom();
+  }, 500);
+
+  document.getElementById('msgInput').focus();
+}
+
+function renderMessage(msg, instant) {
+  const container = document.getElementById('messages');
+
+  if (msg.type === 'system') {
+    const el = document.createElement('div');
+    el.className = 'system-msg';
+    el.textContent = msg.text;
+    container.appendChild(el);
+    if (!instant) scrollToBottom();
+    return;
+  }
+
+  const mine = msg.name === myName;
+  const wrap = document.createElement('div');
+  wrap.className = `msg ${mine ? 'mine' : 'theirs'}`;
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'msg-name';
+  nameEl.textContent = msg.name;
+
+  const textEl = document.createElement('div');
+  textEl.textContent = msg.text;
+
+  const timeEl = document.createElement('div');
+  timeEl.className = 'msg-time';
+  const d = new Date(msg.timestamp || Date.now());
+  timeEl.textContent = d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+
+  wrap.appendChild(nameEl);
+  wrap.appendChild(textEl);
+  wrap.appendChild(timeEl);
+  container.appendChild(wrap);
+
+  if (!instant) scrollToBottom();
+}
+
+window.sendMessage = function() {
+  const input = document.getElementById('msgInput');
+  const text = input.value.trim();
+  if (!text || !db) return;
+
+  push(ref(db, 'messages'), {
+    name: myName,
+    text: text,
+    timestamp: Date.now(),
+    type: 'message'
+  });
+
+  input.value = '';
+  input.style.height = 'auto';
+  input.focus();
+};
+
+window.handleKey = function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+};
+
+window.autoResize = function(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+};
+
+function scrollToBottom() {
+  const c = document.getElementById('messages');
+  c.scrollTop = c.scrollHeight;
+}
+
+// ── INIT ──
+chatConfig = loadConfig();
+if (!chatConfig) {
+  document.getElementById('configNotice').style.display = 'flex';
+} else {
+  document.getElementById('configNotice').style.display = 'none';
+  document.getElementById('lockScreen').style.display = 'flex';
+  setTimeout(() => document.getElementById('passwordInput').focus(), 100);
+}
+</script>
+</body>
+</html>
