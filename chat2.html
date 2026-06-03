@@ -571,25 +571,6 @@ function hideAllActions() {
 }
 
 
-function addReactionUI(wrap){
-  const bar=document.createElement('div');
-  bar.className='reaction-bar';
-
-  ['👍','❤️','🔥'].forEach(r=>{
-    const b=document.createElement('button');
-    b.className='reaction-btn';
-    b.textContent=r;
-    b.onclick=(e)=>{
-      e.stopPropagation();
-      b.textContent=r+' ✓';
-      setTimeout(()=>b.textContent=r,1000);
-    };
-    bar.appendChild(b);
-  });
-
-  wrap.appendChild(bar);
-}
-
 
 // ── SEND ──
 window.sendMessage = function() {
